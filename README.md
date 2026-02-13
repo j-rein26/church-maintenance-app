@@ -1,3 +1,6 @@
+# Maintenance Tasks Tracking App
+This app was designed to allow users to enter and track different maintenance tasks throughout the building. It uses Firebase for database. For authentication user's email and password are required. Users can make an entry for the date maintenance was performed and the app will show whether the task is on schedule, overdue, or due soon. The app was designed for a specific user but can easily be modified for other users' needs.
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
