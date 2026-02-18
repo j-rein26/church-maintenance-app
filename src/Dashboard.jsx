@@ -13,10 +13,10 @@ export default function Dashboard() {
   const [entryDate, setEntryDate] = useState("");
   const [entryTime, setEntryTime] = useState("");
   const [collapsedCategories, setCollapsedCategories] = useState({});
+  const [activePhase, setActivePhase] = useState(null);
+  const [collapsedGenerators, setCollapsedGenerators] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -25,12 +25,13 @@ export default function Dashboard() {
       const tasksSnap = await getDocs(collection(db, "tasks"));
       const entriesSnap = await getDocs(collection(db, "entries"));
 
-      // Sort phases by name
       const sortedPhases = phasesSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .sort((a, b) => a.name.localeCompare(b.name));
 
       setPhases(sortedPhases);
+      if (!activePhase && sortedPhases.length) setActivePhase(sortedPhases[0].id);
+
       setCategories(categoriesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setTasks(tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
@@ -43,26 +44,14 @@ export default function Dashboard() {
       setEntries(allEntries);
 
       setLoading(false);
-    } catch (err) {
-      console.error("Error fetching data:", err);
-    }
+    } catch (err) { console.error("Error fetching data:", err); }
   };
 
-  const openModal = (task) => {
-    setSelectedTask(task);
-    setEntryDate("");
-    setEntryTime("");
-  };
-
-  const closeModal = () => {
-    setSelectedTask(null);
-  };
+  const openModal = (task) => { setSelectedTask(task); setEntryDate(""); setEntryTime(""); };
+  const closeModal = () => setSelectedTask(null);
 
   const saveEntry = async () => {
-    if (!entryDate) {
-      alert("Please select a date.");
-      return;
-    }
+    if (!entryDate) { alert("Please select a date."); return; }
     try {
       await addDoc(collection(db, "entries"), {
         task_id: selectedTask.id,
@@ -72,47 +61,32 @@ export default function Dashboard() {
       });
       closeModal();
       fetchData();
-    } catch (err) {
-      console.error("Error saving entry:", err);
-      alert("Failed to save entry.");
-    }
+    } catch (err) { console.error(err); alert("Failed to save entry."); }
   };
 
   const renameTask = async (task) => {
     const newName = prompt("Enter new name for this task", task.name);
     if (!newName) return;
-
-    try {
-      await updateDoc(doc(db, "tasks", task.id), { name: newName });
-      fetchData();
-    } catch (err) {
-      console.error("Error renaming task:", err);
-      alert("Failed to rename task.");
-    }
+    try { await updateDoc(doc(db, "tasks", task.id), { name: newName }); fetchData(); }
+    catch (err) { console.error(err); alert("Failed to rename task."); }
   };
 
   const addTaskToCategory = async (category) => {
     const taskName = prompt(`Enter new task name for ${category.name}`);
     if (!taskName) return;
-
     try {
       await addDoc(collection(db, "tasks"), {
-        name: taskName,
-        category_id: category.id,
-        recurrence_type: "monthly", // default, can edit later
-        requires_time: false,       // default, can edit later
+        name: taskName, category_id: category.id, recurrence_type: "monthly", requires_time: false
       });
       fetchData();
-    } catch (err) {
-      console.error("Error adding task:", err);
-      alert("Failed to add task.");
-    }
+    } catch (err) { console.error(err); alert("Failed to add task."); }
   };
+
+  const toggleCategory = (catId) => { setCollapsedCategories(prev => ({ ...prev, [catId]: !prev[catId] })); };
 
   const calculateStatus = (task) => {
     const taskEntries = entries[task.id] || [];
     if (taskEntries.length === 0) return "No entries";
-
     const latest = taskEntries.reduce((a, b) => (a.date > b.date ? a : b));
     const lastDate = new Date(latest.date);
 
@@ -125,15 +99,9 @@ export default function Dashboard() {
       default: intervalDays = 30;
     }
 
-    const nextDue = new Date(lastDate);
-    nextDue.setDate(nextDue.getDate() + intervalDays);
-
-    const today = new Date();
-    const diff = (nextDue - today) / (1000 * 60 * 60 * 24);
-
-    if (diff < 0) return "Overdue";
-    if (diff <= 3) return "Due Soon";
-    return "On Schedule";
+    const nextDue = new Date(lastDate); nextDue.setDate(nextDue.getDate() + intervalDays);
+    const diff = (nextDue - new Date()) / (1000 * 60 * 60 * 24);
+    if (diff < 0) return "Overdue"; if (diff <= 3) return "Due Soon"; return "On Schedule";
   };
 
   const getStatusStyle = (status) => {
@@ -146,27 +114,44 @@ export default function Dashboard() {
     }
   };
 
-  const toggleCategory = (catId) => {
-    setCollapsedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
+  const generateCSVReport = () => {
+    let csv = "Phase,Category,Task,Status,Date,Time\n";
+    tasks.forEach(task => {
+      const cat = categories.find(c => c.id === task.category_id);
+      const phase = cat?.phase_id ? phases.find(p => p.id === cat.phase_id)?.name : "Generator";
+      const taskEntries = entries[task.id] || [];
+      const lastEntry = taskEntries[taskEntries.length - 1] || {};
+      const status = calculateStatus(task);
+      csv += `"${phase}","${cat?.name || ""}","${task.name}","${status}","${lastEntry.date || ""}","${lastEntry.time || ""}"\n`;
+    });
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "maintenance_report.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (loading) return <p>Loading...</p>;
 
-  const generatorCategories = categories.filter(cat => !cat.phase_id &&
-    (cat.name === "Generator East" || cat.name === "Generator West")
-  );
-
+  const generatorCategories = categories.filter(cat => !cat.phase_id && (cat.name.includes("Generator")));
   const phaseCategories = categories.filter(cat => cat.phase_id);
 
   return (
-    <div style={{ padding: "20px" }}>
+    <div style={{ padding: "10px" }}>
       <h1>Maintenance Dashboard</h1>
+
+      {/* REPORT BUTTON */}
+      <button onClick={generateCSVReport} style={{ marginBottom: "10px" }}>
+        Generate Report (CSV)
+      </button>
 
       {/* GENERATORS */}
       <div>
-        <h2>Generators</h2>
-        {generatorCategories.map(cat => (
-          <div key={cat.id}>
+        <h2 style={{ cursor: "pointer" }} onClick={() => setCollapsedGenerators(!collapsedGenerators)}>
+          Generators {collapsedGenerators ? "(+)" : "(-)"}
+        </h2>
+        {!collapsedGenerators && generatorCategories.map(cat => (
+          <div key={cat.id} style={{ marginLeft: "10px", marginBottom: "10px" }}>
             <h3>{cat.name}</h3>
             {tasks.filter(t => t.category_id === cat.id).map(task => {
               const status = calculateStatus(task);
@@ -183,33 +168,38 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* PHASES */}
-      {phases.map(phase => (
-        <div key={phase.id} style={{ marginTop: "30px" }}>
-          <h2>{phase.name}</h2>
-          {phaseCategories
-            .filter(cat => cat.phase_id === phase.id)
+      {/* PHASE TABS */}
+      <div style={{ marginTop: "20px", display: "flex", flexWrap: "wrap" }}>
+        {phases.map(phase => (
+          <button key={phase.id}
+            onClick={() => setActivePhase(phase.id)}
+            style={{ marginRight: "10px", marginBottom: "5px", fontWeight: activePhase === phase.id ? "bold" : "normal" }}>
+            {phase.name}
+          </button>
+        ))}
+      </div>
+
+      {/* ACTIVE PHASE */}
+      {phases.filter(phase => phase.id === activePhase).map(phase => (
+        <div key={phase.id} style={{ marginTop: "15px" }}>
+          {phaseCategories.filter(cat => cat.phase_id === phase.id)
             .sort((a, b) => a.name.localeCompare(b.name))
             .map(cat => (
-              <div key={cat.id} style={{ marginLeft: "10px" }}>
+              <div key={cat.id} style={{ marginLeft: "10px", marginBottom: "10px" }}>
                 <h3 style={{ cursor: "pointer" }} onClick={() => toggleCategory(cat.id)}>
                   {cat.name} {collapsedCategories[cat.id] ? "(+)" : "(-)"}
                 </h3>
-
-                <button onClick={() => addTaskToCategory(cat)} style={{ marginBottom: "5px", fontSize: "0.8em" }}>+ Add Task</button>
-
-                {!collapsedCategories[cat.id] && tasks
-                  .filter(t => t.category_id === cat.id)
-                  .map(task => {
-                    const status = calculateStatus(task);
-                    return (
-                      <div key={task.id} style={{ marginLeft: "20px", marginBottom: "5px" }}>
-                        {task.name} — <span style={getStatusStyle(status)}>{status}</span>
-                        <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>Add Entry</button>
-                        <button onClick={() => renameTask(task)} style={{ marginLeft: "5px" }}>Rename</button>
-                      </div>
-                    );
-                  })}
+                <button onClick={() => addTaskToCategory(cat)} style={{ fontSize: "0.8em", marginBottom: "5px" }}>+ Add Task</button>
+                {!collapsedCategories[cat.id] && tasks.filter(t => t.category_id === cat.id).map(task => {
+                  const status = calculateStatus(task);
+                  return (
+                    <div key={task.id} style={{ marginLeft: "20px", marginBottom: "5px" }}>
+                      {task.name} — <span style={getStatusStyle(status)}>{status}</span>
+                      <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>Add Entry</button>
+                      <button onClick={() => renameTask(task)} style={{ marginLeft: "5px" }}>Rename</button>
+                    </div>
+                  );
+                })}
               </div>
             ))}
         </div>
@@ -220,25 +210,14 @@ export default function Dashboard() {
         <div style={modalOverlay}>
           <div style={modalStyle}>
             <h3>Add Entry for {selectedTask.name}</h3>
-
             <label>Date:</label>
-            <input
-              type="date"
-              value={entryDate}
-              onChange={(e) => setEntryDate(e.target.value)}
-            />
-
+            <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)} />
             {selectedTask.requires_time && (
               <>
                 <label style={{ marginTop: "10px" }}>Time:</label>
-                <input
-                  type="time"
-                  value={entryTime}
-                  onChange={(e) => setEntryTime(e.target.value)}
-                />
+                <input type="time" value={entryTime} onChange={(e) => setEntryTime(e.target.value)} />
               </>
             )}
-
             <div style={{ marginTop: "15px" }}>
               <button onClick={saveEntry}>Save</button>
               <button onClick={closeModal} style={{ marginLeft: "10px" }}>Cancel</button>
@@ -251,23 +230,16 @@ export default function Dashboard() {
 }
 
 const modalOverlay = {
-  position: "fixed",
-  top: 0,
-  left: 0,
-  width: "100%",
-  height: "100%",
+  position: "fixed", top: 0, left: 0,
+  width: "100%", height: "100%",
   backgroundColor: "rgba(0,0,0,0.5)",
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
+  display: "flex", justifyContent: "center", alignItems: "center",
 };
 
 const modalStyle = {
-  backgroundColor: "white",
-  padding: "20px",
-  borderRadius: "8px",
-  width: "300px",
+  backgroundColor: "white", padding: "20px", borderRadius: "8px", width: "300px",
 };
+
 
 
 
