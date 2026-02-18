@@ -1,159 +1,101 @@
 import { db } from "./firebase";
-import { collection, doc, setDoc, addDoc } from "firebase/firestore";
+import { collection, addDoc } from "firebase/firestore";
 
-async function seedDatabase() {
+const seedDatabase = async () => {
   try {
-    console.log("Starting new seed...");
 
-    // -------------------------
-    // PHASES
-    // -------------------------
-    const phases = [
-      { id: "phase1", name: "Phase 1" },
-      { id: "phase2", name: "Phase 2" },
-      { id: "phase3", name: "Phase 3" },
-      { id: "phase4", name: "Phase 4" },
-    ];
+    // 1️⃣ Create Phases
+    const phaseNames = ["Phase 1", "Phase 2", "Phase 3", "Phase 4"];
+    const phaseRefs = {};
 
-    for (let phase of phases) {
-      await setDoc(doc(db, "phases", phase.id), {
-        name: phase.name
-      });
+    for (const name of phaseNames) {
+      const docRef = await addDoc(collection(db, "phases"), { name });
+      phaseRefs[name] = docRef.id;
     }
 
-    // -------------------------
-    // CATEGORY TYPES
-    // -------------------------
-    const phaseCategoryTypes = [
-      "Exit Signs",
-      "Uranyl Pads",
-      "Sump Pumps & Pits",
-      "Elevator Pits",
-      "Seal Plates & Tracks"
-    ];
-
-    // Create categories under EACH phase
-    for (let phase of phases) {
-      for (let categoryName of phaseCategoryTypes) {
-
-        const categoryId = `${categoryName.replace(/\s+/g, "")}_${phase.id}`;
-
-        await setDoc(doc(db, "categories", categoryId), {
-          name: categoryName,
-          phase_id: phase.id,
-          active: true
-        });
-
-        // -------------------------
-        // TASKS FOR EACH CATEGORY
-        // -------------------------
-
-        if (categoryName === "Exit Signs") {
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Monthly Battery Test",
-            recurrence_type: "monthly",
-            requires_time: false,
-            active: true
-          });
-
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Quarterly Breaker Test",
-            recurrence_type: "quarterly",
-            requires_time: false,
-            active: true
-          });
-        }
-
-        if (categoryName === "Uranyl Pads") {
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Monthly Replacement",
-            recurrence_type: "monthly",
-            requires_time: false,
-            active: true
-          });
-        }
-
-        if (categoryName === "Sump Pumps & Pits") {
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Quarterly Check",
-            recurrence_type: "quarterly",
-            requires_time: false,
-            active: true
-          });
-        }
-
-        if (categoryName === "Elevator Pits") {
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Quarterly Check",
-            recurrence_type: "quarterly",
-            requires_time: false,
-            active: true
-          });
-        }
-
-        if (categoryName === "Seal Plates & Tracks") {
-          await addDoc(collection(db, "tasks"), {
-            category_id: categoryId,
-            name: "Quarterly Inspection",
-            recurrence_type: "quarterly",
-            requires_time: false,
-            active: true
-          });
-        }
-      }
-    }
-
-    // -------------------------
-    // GENERATORS (NO PHASE)
-    // -------------------------
-
-    const generators = [
-      { id: "genEast", name: "Generator East" },
-      { id: "genWest", name: "Generator West" }
-    ];
-
-    for (let gen of generators) {
-      await setDoc(doc(db, "categories", gen.id), {
-        name: gen.name,
-        phase_id: null,
-        active: true
+    // Helper to create category
+    const createCategory = async (name, phaseId) => {
+      const docRef = await addDoc(collection(db, "categories"), {
+        name,
+        phase_id: phaseId
       });
+      return docRef.id;
+    };
 
-      // Weekly Test
+    // Helper to create task
+    const createTask = async (name, categoryId, recurrence, requiresTime = false) => {
       await addDoc(collection(db, "tasks"), {
-        category_id: gen.id,
-        name: "Weekly Test",
-        recurrence_type: "weekly",
-        requires_time: true,
-        required_day_of_week: "Monday",
-        time_window_start: gen.id === "genEast" ? "09:00" : "11:00",
-        time_window_end: gen.id === "genEast" ? "09:05" : "11:05",
-        active: true
+        name,
+        category_id: categoryId,
+        recurrence_type: recurrence,
+        requires_time: requiresTime
       });
+    };
 
-      // Annual Service (September)
-      await addDoc(collection(db, "tasks"), {
-        category_id: gen.id,
-        name: "Annual Service",
-        recurrence_type: "yearly",
-        recurrence_month: 9,
-        requires_time: false,
-        active: true
-      });
+    // ===============================
+    // PHASES 1-4 (Standard Layout)
+    // ===============================
+    for (let phase of phaseNames) {
+      const phaseId = phaseRefs[phase];
+
+      // Exit Signs category (start empty or with placeholder)
+      const exitCat = await createCategory("Exit Signs", phaseId);
+      await createTask("Placeholder Exit Sign", exitCat, "monthly");
+
+      // Uranyl Pads
+      const uranylCat = await createCategory("Uranyl Pads", phaseId);
+      await createTask("Uranyl Pad Check", uranylCat, "monthly");
+
+      // Elevator Pits
+      const elevatorCat = await createCategory("Elevator Pits", phaseId);
+      await createTask("Elevator Pit Check", elevatorCat, "quarterly");
+
+      // Seal Plates & Tracks
+      const sealCat = await createCategory("Seal Plates & Tracks", phaseId);
+      await createTask("Seal Plates & Tracks Check", sealCat, "monthly");
     }
 
-    console.log("Seed completed successfully!");
+    // ===============================
+    // Sump Pumps (specific phases)
+    // ===============================
+    // Phase 3
+    const phase3Id = phaseRefs["Phase 3"];
+    const sumpCat3 = await createCategory("Sump Pumps", phase3Id);
+    await createTask("Lower Level – Janitorial Closet", sumpCat3, "quarterly");
+    await createTask("Lower Level – Under Elevator", sumpCat3, "quarterly");
+    await createTask("Stairwell", sumpCat3, "quarterly");
+
+    // Phase 4
+    const phase4Id = phaseRefs["Phase 4"];
+    const sumpCat4 = await createCategory("Sump Pumps", phase4Id);
+    await createTask("Lower Level – Mechanical Room Pump 1", sumpCat4, "quarterly");
+    await createTask("Lower Level – Mechanical Room Pump 2", sumpCat4, "quarterly");
+
+    // Grinder Pumps (Phase 4 only)
+    const grinderCat4 = await createCategory("Grinder Pumps", phase4Id);
+    await createTask("Lower Level – Mechanical Room Grinder 1", grinderCat4, "quarterly");
+    await createTask("Lower Level – Mechanical Room Grinder 2", grinderCat4, "quarterly");
+
+    // ===============================
+    // GENERATORS (No Phase)
+    // ===============================
+    const eastGenCat = await createCategory("Generator East", null);
+    await createTask("Weekly Test", eastGenCat, "weekly", true);
+    await createTask("Annual Service", eastGenCat, "yearly", false);
+
+    const westGenCat = await createCategory("Generator West", null);
+    await createTask("Weekly Test", westGenCat, "weekly", true);
+    await createTask("Annual Service", westGenCat, "yearly", false);
+
     alert("Database seeded successfully!");
   } catch (error) {
     console.error("Seeding error:", error);
-    alert("Seeding failed. Check console.");
+    alert("Error seeding database");
   }
-}
+};
 
 export default seedDatabase;
+
+
+
 

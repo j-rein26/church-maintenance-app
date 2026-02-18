@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { db } from "./firebase";
-import { collection, getDocs, addDoc } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, doc } from "firebase/firestore";
 
 export default function Dashboard() {
   const [phases, setPhases] = useState([]);
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [selectedTask, setSelectedTask] = useState(null);
   const [entryDate, setEntryDate] = useState("");
   const [entryTime, setEntryTime] = useState("");
+  const [collapsedCategories, setCollapsedCategories] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -24,7 +25,12 @@ export default function Dashboard() {
       const tasksSnap = await getDocs(collection(db, "tasks"));
       const entriesSnap = await getDocs(collection(db, "entries"));
 
-      setPhases(phasesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      // Sort phases by name
+      const sortedPhases = phasesSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      setPhases(sortedPhases);
       setCategories(categoriesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
       setTasks(tasksSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
 
@@ -57,7 +63,6 @@ export default function Dashboard() {
       alert("Please select a date.");
       return;
     }
-
     try {
       await addDoc(collection(db, "entries"), {
         task_id: selectedTask.id,
@@ -65,12 +70,42 @@ export default function Dashboard() {
         time: selectedTask.requires_time ? entryTime : null,
         created_at: new Date(),
       });
-
       closeModal();
       fetchData();
     } catch (err) {
       console.error("Error saving entry:", err);
       alert("Failed to save entry.");
+    }
+  };
+
+  const renameTask = async (task) => {
+    const newName = prompt("Enter new name for this task", task.name);
+    if (!newName) return;
+
+    try {
+      await updateDoc(doc(db, "tasks", task.id), { name: newName });
+      fetchData();
+    } catch (err) {
+      console.error("Error renaming task:", err);
+      alert("Failed to rename task.");
+    }
+  };
+
+  const addTaskToCategory = async (category) => {
+    const taskName = prompt(`Enter new task name for ${category.name}`);
+    if (!taskName) return;
+
+    try {
+      await addDoc(collection(db, "tasks"), {
+        name: taskName,
+        category_id: category.id,
+        recurrence_type: "monthly", // default, can edit later
+        requires_time: false,       // default, can edit later
+      });
+      fetchData();
+    } catch (err) {
+      console.error("Error adding task:", err);
+      alert("Failed to add task.");
     }
   };
 
@@ -103,28 +138,25 @@ export default function Dashboard() {
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case "On Schedule":
-        return { color: "green", fontWeight: "bold" };
-      case "Due Soon":
-        return { color: "orange", fontWeight: "bold" };
-      case "Overdue":
-        return { color: "red", fontWeight: "bold" };
-      case "No entries":
-        return { color: "gray" };
-      default:
-        return {};
+      case "On Schedule": return { color: "green", fontWeight: "bold" };
+      case "Due Soon": return { color: "orange", fontWeight: "bold" };
+      case "Overdue": return { color: "red", fontWeight: "bold" };
+      case "No entries": return { color: "gray" };
+      default: return {};
     }
+  };
+
+  const toggleCategory = (catId) => {
+    setCollapsedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
   };
 
   if (loading) return <p>Loading...</p>;
 
-  const generatorCategories = categories.filter(cat =>
-    cat.name === "Generator East" || cat.name === "Generator West"
+  const generatorCategories = categories.filter(cat => !cat.phase_id &&
+    (cat.name === "Generator East" || cat.name === "Generator West")
   );
 
-  const phaseCategories = categories.filter(cat =>
-    cat.phase_id !== null
-  );
+  const phaseCategories = categories.filter(cat => cat.phase_id);
 
   return (
     <div style={{ padding: "20px" }}>
@@ -140,16 +172,13 @@ export default function Dashboard() {
               const status = calculateStatus(task);
               return (
                 <div key={task.id}>
-                  {task.name} — 
-                  <span style={getStatusStyle(status)}>
-                    {status}
-                  </span>
-                  <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>
-                    Add Entry
-                  </button>
+                  {task.name} — <span style={getStatusStyle(status)}>{status}</span>
+                  <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>Add Entry</button>
+                  <button onClick={() => renameTask(task)} style={{ marginLeft: "5px" }}>Rename</button>
                 </div>
               );
             })}
+            <button onClick={() => addTaskToCategory(cat)} style={{ marginTop: "5px", fontSize: "0.8em" }}>+ Add Task</button>
           </div>
         ))}
       </div>
@@ -160,23 +189,27 @@ export default function Dashboard() {
           <h2>{phase.name}</h2>
           {phaseCategories
             .filter(cat => cat.phase_id === phase.id)
+            .sort((a, b) => a.name.localeCompare(b.name))
             .map(cat => (
-              <div key={cat.id}>
-                <h3>{cat.name}</h3>
-                {tasks.filter(t => t.category_id === cat.id).map(task => {
-                  const status = calculateStatus(task);
-                  return (
-                    <div key={task.id}>
-                      {task.name} — 
-                      <span style={getStatusStyle(status)}>
-                        {status}
-                      </span>
-                      <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>
-                        Add Entry
-                      </button>
-                    </div>
-                  );
-                })}
+              <div key={cat.id} style={{ marginLeft: "10px" }}>
+                <h3 style={{ cursor: "pointer" }} onClick={() => toggleCategory(cat.id)}>
+                  {cat.name} {collapsedCategories[cat.id] ? "(+)" : "(-)"}
+                </h3>
+
+                <button onClick={() => addTaskToCategory(cat)} style={{ marginBottom: "5px", fontSize: "0.8em" }}>+ Add Task</button>
+
+                {!collapsedCategories[cat.id] && tasks
+                  .filter(t => t.category_id === cat.id)
+                  .map(task => {
+                    const status = calculateStatus(task);
+                    return (
+                      <div key={task.id} style={{ marginLeft: "20px", marginBottom: "5px" }}>
+                        {task.name} — <span style={getStatusStyle(status)}>{status}</span>
+                        <button onClick={() => openModal(task)} style={{ marginLeft: "10px" }}>Add Entry</button>
+                        <button onClick={() => renameTask(task)} style={{ marginLeft: "5px" }}>Rename</button>
+                      </div>
+                    );
+                  })}
               </div>
             ))}
         </div>
@@ -208,9 +241,7 @@ export default function Dashboard() {
 
             <div style={{ marginTop: "15px" }}>
               <button onClick={saveEntry}>Save</button>
-              <button onClick={closeModal} style={{ marginLeft: "10px" }}>
-                Cancel
-              </button>
+              <button onClick={closeModal} style={{ marginLeft: "10px" }}>Cancel</button>
             </div>
           </div>
         </div>
@@ -237,5 +268,7 @@ const modalStyle = {
   borderRadius: "8px",
   width: "300px",
 };
+
+
 
 
