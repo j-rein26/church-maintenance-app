@@ -1,19 +1,33 @@
-# Maintenance Tasks Tracking App
-This app was designed to allow users to enter and track different maintenance tasks throughout the building. It uses Firebase for database. For authentication user's email and password are required. Users can make an entry for the date maintenance was performed and the app will show whether the task is on schedule, overdue, or due soon. The app was designed for a specific user but can easily be modified for other users' needs.
+# Church Maintenance PWA ⛪️🛠
 
-# React + Vite
+A mobile-first, real-time Progressive Web App (PWA) built to automate and track recurring facility maintenance tasks. 
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## 🚀 The Challenge
+A local church needed a way to move away from paper-based maintenance logs. The requirements were:
+* **Accessibility:** Must work on iPhones/Androids for staff on the move.
+* **Proactive Alerts:** Automatically identify "Due Soon" or "Overdue" tasks.
+* **Compliance:** Generate instant reports for Fire Department inspections.
+* **Offline Access:** Ability to save the app to the home screen with a custom icon.
 
-Currently, two official plugins are available:
+## 🛠 Tech Stack
+* **Frontend:** React.js (Vite)
+* **Backend/Database:** Firebase Firestore (Real-time NoSQL)
+* **Authentication:** Firebase Auth (Secure Email/Password login)
+* **Hosting:** Firebase Hosting
+* **Styling:** Custom Responsive CSS-in-JS
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## ✨ Key Features
+* **Dynamic Status Engine:** Tasks automatically cycle from Green (On Schedule) to Yellow (Due Soon) to Red (Overdue) based on custom recurrence intervals (Daily, Weekly, Monthly, Quarterly, Yearly).
+* **Fire Dept Reporting:** A date-filtered reporting engine that generates print-ready PDF logs of all maintenance history.
+* **Data Integrity:** CSV Export feature for local data backups and offline record-keeping.
+* **Admin Mode:** Secure "Management Mode" for adding, renaming, or deleting tasks and categories.
 
-## React Compiler
+## 📸 Screenshots
+*(Pro-tip: Take a screenshot of your iPhone screen and upload it here!)*
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## ⚙️ Installation & Setup
+1. Clone the repo: `git clone [your-repo-link]`
+2. Install dependencies: `npm install`
+3. Create a `.env` file with your Firebase configuration.
+4. Run locally: `npm run dev`
+5. Deploy: `npm run deploy`
