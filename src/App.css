@@ -136,3 +136,125 @@
 .text-btn:hover {
   color: #94a3b8;
 }
+
+/* --- FIRE DEPT REPORT STYLES --- */
+.report-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 2000;
+  overflow-y: auto;
+  padding: 40px;
+  display: flex;
+  justify-content: center;
+}
+
+.report-paper {
+  background: white;
+  color: #1a1a1a;
+  width: 100%;
+  max-width: 850px;
+  min-height: 100vh;
+  padding: 60px;
+  border-radius: 4px;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.report-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid #1a1a1a;
+  padding-bottom: 20px;
+  margin-bottom: 30px;
+}
+
+.report-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+.report-table th {
+  background: #f1f5f9;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  font-weight: 700;
+}
+
+.report-table td {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.status-pass { color: #059669; font-weight: bold; }
+.status-fail { color: #dc2626; font-weight: bold; }
+
+.print-btn { background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+.close-print { background: #64748b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+
+/* --- PRINT LOGIC --- */
+@media print {
+  .sidebar, .report-actions, .close-print, .print-btn {
+    display: none !important;
+  }
+  .report-overlay {
+    position: absolute;
+    background: white;
+    padding: 0;
+  }
+  .report-paper {
+    box-shadow: none;
+    padding: 0;
+    width: 100%;
+  }
+
+  .date-controls {
+  display: flex;
+  gap: 15px;
+  margin-top: 10px;
+  background: #f8fafc;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+}
+
+.date-controls label {
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #475569;
+}
+
+.date-controls input {
+  margin-left: 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px;
+}
+
+/* Print Specifics */
+.print-only { display: none; }
+
+@media print {
+  .no-print { display: none !important; }
+  .print-only { display: block !important; margin-top: 5px; font-weight: bold; }
+}
+}
+
