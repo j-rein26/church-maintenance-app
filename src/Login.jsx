@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { auth } from "./firebase";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import "./Login.css"; // Import the new CSS file
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -11,29 +12,46 @@ export default function Login() {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      alert("Logged in successfully!");
+      // Removed alert for a smoother UX
     } catch (err) {
-      setError(err.message);
+      setError("Invalid email or password. Please try again.");
     }
   };
 
   return (
-    <form onSubmit={handleLogin}>
-      <h2>Login</h2>
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-      /><br/>
-      <input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      /><br/>
-      <button type="submit">Login</button>
-      {error && <p style={{color:"red"}}>{error}</p>}
-    </form>
+    <div className="login-page">
+      <form className="login-card" onSubmit={handleLogin}>
+        <h2>Church Maintenance</h2>
+        <p className="subtitle">Please sign in to continue</p>
+        
+        <div className="input-group">
+          <input
+            type="email"
+            placeholder="Email"
+            className="login-input"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="input-group">
+          <input
+            type="password"
+            placeholder="Password"
+            className="login-input"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        <button type="submit" className="login-btn">
+          Login
+        </button>
+
+        {error && <p className="error-text">{error}</p>}
+      </form>
+    </div>
   );
 }

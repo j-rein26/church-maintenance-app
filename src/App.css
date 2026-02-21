@@ -1,0 +1,138 @@
+/* Container that holds everything */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  background-color: #0f172a; /* Dark background for the main area */
+}
+
+/* The Sidebar */
+.sidebar {
+  width: 260px;
+  background-color: #1a1a1a;
+  height: 100vh;
+  position: fixed; /* Keeps sidebar from scrolling with the page */
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border-right: 1px solid #334155;
+  box-sizing: border-box; /* Ensures padding doesn't mess up width */
+  z-index: 10;
+}
+
+/* The Content Area on the right */
+.content-area {
+  margin-left: 260px; /* Pushes content to the right of the fixed sidebar */
+  flex: 1;
+  padding: 20px;
+  min-height: 100vh;
+}
+
+/* Sidebar Header & Brand */
+.sidebar-header h2 {
+  color: #1e3a8a; /* Your Navy Blue branding */
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+}
+
+.manage-btn {
+  width: 100%;
+  background-color: #334155;
+  color: #cbd5e1;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+/* Navigation Items */
+.sidebar-menu {
+  flex: 1; /* Pushes the menu items to take up available space */
+}
+
+.nav-item {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  padding: 12px 16px;
+  text-align: left;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.nav-item.active {
+  background-color: #2563eb; /* Bright Blue for the selected tab */
+  color: white;
+  font-weight: 600;
+}
+
+.nav-item:hover:not(.active) {
+  background-color: #2d2d2d;
+  color: white;
+}
+
+.menu-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  margin: 24px 0 12px 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* Sidebar Footer Buttons (The Green and Gray ones) */
+.sidebar-footer {
+  margin-top: auto; /* Ensures footer stays at the very bottom */
+  padding-top: 20px;
+  border-top: 1px solid #334155;
+}
+
+.footer-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 600;
+  margin-top: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.report { 
+  background-color: #10b981; /* Success Green */
+  color: white; 
+}
+
+.backup { 
+  background-color: #334155; /* Slate Gray */
+  color: white; 
+}
+
+/* Auth Row (Logout & Seed) */
+.auth-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.text-btn {
+  background: none;
+  border: none;
+  color: #64748b;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.text-btn:hover {
+  color: #94a3b8;
+}

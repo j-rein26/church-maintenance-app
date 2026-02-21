@@ -1,20 +1,27 @@
 {
   "short_name": "Maintenance",
   "name": "Church Maintenance App",
+  "description": "Maintenance tracking for Church facilities.",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "/wrench.png",
+      "type": "image/png",
+      "sizes": "50x50"
+    },
+    {
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "icon-512.png",
+      "src": "/icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
-      "purpose": "maskable"
+      "purpose": "any maskable"
     }
   ],
   "start_url": ".",
-  "theme_color": "#1a1a1a",
+  "display": "standalone",
+  "theme_color": "#1e3a8a",
   "background_color": "#ffffff"
 }
