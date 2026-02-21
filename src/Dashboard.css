@@ -206,6 +206,90 @@
   border-radius: 6px;
   cursor: pointer;
 }
+.log-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: white;
+  padding: 2rem;
+  width: 350px;
+  border-radius: 12px;
+  text-align: left;
+}
+
+.modal-title {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  color: #f8fafc;
+}
+
+.modal-subtitle {
+  color: #94a3b8;
+  margin-bottom: 1.5rem;
+  font-weight: 500;
+}
+
+.log-input-group {
+  margin-bottom: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-input-group label {
+  font-size: 0.85rem;
+  color: #cbd5e1;
+}
+
+.calendar-input {
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  outline: none;
+}
+
+.calendar-input:focus {
+  border-color: #3b82f6;
+}
+
+.confirm-btn {
+  background: #3b82f6;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.confirm-btn:hover {
+  background: #2563eb;
+}
+/* Badge Styles */
+.days-badge {
+  font-size: 0.7rem;
+  margin-left: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+.days-badge.green { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.days-badge.yellow { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.days-badge.red { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.days-badge.gray { background: rgba(148, 163, 184, 0.2); color: #94a3b8; }
+
+/* Notes Area */
+.notes-area {
+  resize: none;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.yellow-warning {
+  background-color: #f59e0b !important;
+  color: #1e293b !important;
+}
 
 .status-on-schedule { background: #ecfdf5; color: #065f46; }
 .status-none { background: #f1f5f9; color: #475569; }

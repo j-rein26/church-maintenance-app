@@ -7,6 +7,7 @@ import FireReport from "./FireReport"; // 1. New Import
 import Login from "./Login";
 import seedDatabase from "./seedData";
 import "./App.css"; 
+import { exportToCSV } from "./ExportData";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -82,7 +83,9 @@ function App() {
             📋 Fire Dept Report
           </button>
           
-          <button className="footer-btn backup">💾 Export Backup</button>
+        <button className="footer-btn backup" onClick={exportToCSV}>
+           💾 Export Backup
+          </button>
           
           <div className="auth-row">
              <button className="text-btn" onClick={handleLogout}>Logout</button>
