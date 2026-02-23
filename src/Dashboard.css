@@ -291,5 +291,74 @@
   color: #1e293b !important;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.phase-history-btn {
+  background: #334155;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.history-link {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  text-decoration: underline;
+  cursor: pointer;
+  margin-right: 15px;
+  font-size: 0.85rem;
+}
+
+.history-modal {
+  width: 500px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.history-scroll-area {
+  overflow-y: auto;
+  margin-top: 20px;
+  padding-right: 10px;
+}
+
+.history-card {
+  background: #0f172a;
+  border-left: 4px solid #3b82f6;
+  padding: 15px;
+  margin-bottom: 12px;
+  border-radius: 4px;
+}
+
+.history-date {
+  font-weight: bold;
+  color: #3b82f6;
+  font-size: 0.9rem;
+}
+
+.history-task-tag {
+  font-size: 0.75rem;
+  background: #1e293b;
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: #cbd5e1;
+}
+
+.history-note-text {
+  margin-top: 8px;
+  font-style: italic;
+  color: #94a3b8;
+  font-size: 0.9rem;
+}
+
 .status-on-schedule { background: #ecfdf5; color: #065f46; }
 .status-none { background: #f1f5f9; color: #475569; }
