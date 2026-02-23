@@ -360,5 +360,53 @@
   font-size: 0.9rem;
 }
 
+/* History Delete Button */
+.delete-log-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-left: auto;
+  opacity: 0.5;
+  transition: opacity 0.2s;
+}
+
+.delete-log-btn:hover {
+  opacity: 1;
+}
+
+/* Print Styling */
+.print-history-btn {
+  background: #10b981;
+  color: white;
+  border: none;
+  padding: 5px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-right: 10px;
+  font-size: 0.8rem;
+}
+
+@media print {
+  body * { visibility: hidden; } /* Hide everything */
+  .printable-history, .printable-history * { visibility: visible; } /* Show only modal */
+  .printable-history {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+  }
+  .no-print { display: none !important; } /* Hide buttons/UI */
+  .history-card { 
+    border: 1px solid #ddd !important; 
+    margin-bottom: 10px;
+    break-inside: avoid;
+    color: black !important;
+  }
+  .history-note-text { color: #333 !important; }
+}
+
+
 .status-on-schedule { background: #ecfdf5; color: #065f46; }
 .status-none { background: #f1f5f9; color: #475569; }

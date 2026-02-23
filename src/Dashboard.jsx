@@ -8,6 +8,7 @@ import {
   getDocs, 
   addDoc, 
   updateDoc,
+  deleteDoc,
   doc,
   serverTimestamp,
   orderBy,
@@ -70,21 +71,24 @@ const Dashboard = ({ activeTab }) => {
     fetchData();
   }, [activeTab]);
 
-  // --- Status & Countdown Helpers ---
+  // --- Status & Countdown Helpers (Fixed for Annual 365-day Logic) ---
   const getStatusColor = (task) => {
     if (!task.last_completed) return "gray";
     const lastDate = task.last_completed.toDate ? task.last_completed.toDate() : new Date(task.last_completed);
     const now = new Date();
     const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
 
+    const freq = task.recurrence_type?.toLowerCase().trim() || "monthly";
+
     const schedules = {
       weekly: { due: 7, warn: 5 },
       monthly: { due: 31, warn: 24 },
       quarterly: { due: 91, warn: 81 },
+      semiannual: { due: 182, warn: 167 },
       annual: { due: 365, warn: 350 }
     };
 
-    const s = schedules[task.recurrence_type?.toLowerCase()] || schedules.monthly;
+    const s = schedules[freq] || schedules.monthly;
     if (diffDays >= s.due) return "red";
     if (diffDays >= s.warn) return "yellow";
     return "green";
@@ -96,36 +100,85 @@ const Dashboard = ({ activeTab }) => {
     const now = new Date();
     const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
 
-    const schedules = { weekly: 7, monthly: 31, quarterly: 91, annual: 365 };
-    const totalAllowed = schedules[task.recurrence_type?.toLowerCase()] || 31;
+    const freq = task.recurrence_type?.toLowerCase().trim() || "monthly";
+    const schedules = { weekly: 7, monthly: 31, quarterly: 91, semiannual: 182, annual: 365 };
+    
+    const totalAllowed = schedules[freq] || 31;
     const remaining = totalAllowed - diffDays;
 
     return remaining <= 0 ? "Overdue" : `${remaining}d left`;
   };
 
-  // --- History Fetching Logic ---
+  // --- History Logic (Fetch, Smart Delete, Print) ---
   const showTaskHistory = async (task) => {
-    const q = query(
-      collection(db, "entries"),
-      where("task_id", "==", task.id),
-      orderBy("timestamp", "desc"),
-      limit(20)
-    );
-    const snap = await getDocs(q);
-    const logs = snap.docs.map(doc => doc.data());
-    setHistoryData({ title: `History: ${task.name}`, logs, isOpen: true });
+    try {
+      const q = query(
+        collection(db, "entries"),
+        where("task_id", "==", task.id),
+        orderBy("timestamp", "desc"),
+        limit(20)
+      );
+      const snap = await getDocs(q);
+      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setHistoryData({ title: `History: ${task.name}`, logs, isOpen: true });
+    } catch (e) {
+      alert("Database index is being built. Try again in 2 minutes.");
+    }
   };
 
   const showPhaseHistory = async () => {
-    const q = query(
-      collection(db, "entries"),
-      where("category", "==", activeTab),
-      orderBy("timestamp", "desc"),
-      limit(50)
-    );
-    const snap = await getDocs(q);
-    const logs = snap.docs.map(doc => doc.data());
-    setHistoryData({ title: `${activeTab} - Recent Activity`, logs, isOpen: true });
+    try {
+      const q = query(
+        collection(db, "entries"),
+        where("category", "==", activeTab),
+        orderBy("timestamp", "desc"),
+        limit(50)
+      );
+      const snap = await getDocs(q);
+      const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setHistoryData({ title: `${activeTab} - Recent Activity`, logs, isOpen: true });
+    } catch (e) {
+      alert("Database index is being built. Try again in 2 minutes.");
+    }
+  };
+
+  const deleteLog = async (logId, task_id) => {
+    if (!window.confirm("Are you sure you want to delete this log? Status will revert to previous entry.")) return;
+    try {
+      // 1. Delete the entry
+      await deleteDoc(doc(db, "entries", logId));
+
+      // 2. Find the new "most recent" entry
+      const q = query(
+        collection(db, "entries"),
+        where("task_id", "==", task_id),
+        orderBy("timestamp", "desc"),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      const taskRef = doc(db, "tasks", task_id);
+
+      if (!snap.empty) {
+        const prevEntry = snap.docs[0].data();
+        await updateDoc(taskRef, {
+          last_completed: prevEntry.timestamp,
+          status: "Completed"
+        });
+      } else {
+        await updateDoc(taskRef, {
+          last_completed: null,
+          status: "Pending"
+        });
+      }
+
+      // 3. Update local state
+      setHistoryData(prev => ({
+        ...prev,
+        logs: prev.logs.filter(log => log.id !== logId)
+      }));
+    } catch (e) {
+      console.error("Delete failed:", e);
+    }
   };
 
   // --- Logging Logic ---
@@ -146,7 +199,7 @@ const Dashboard = ({ activeTab }) => {
         timestamp: selectedDate, 
         run_time: runTime || null,
         notes: notes || "Historical Data Entry",
-        category: activeTab, // Important for Phase History filtering
+        category: activeTab,
         logged_at: serverTimestamp(),
       });
 
@@ -154,7 +207,7 @@ const Dashboard = ({ activeTab }) => {
         ? logModalTask.last_completed.toDate() 
         : new Date(logModalTask.last_completed || 0);
 
-      if (selectedDate > currentLastCompleted) {
+      if (selectedDate >= currentLastCompleted) {
         await updateDoc(doc(db, "tasks", logModalTask.id), {
           last_completed: selectedDate,
           status: "Completed"
@@ -162,7 +215,6 @@ const Dashboard = ({ activeTab }) => {
       }
       setLogModalTask(null);
     } catch (e) {
-      console.error(e);
       alert("Error saving log.");
     }
   };
@@ -171,7 +223,7 @@ const Dashboard = ({ activeTab }) => {
 
   return (
     <div className="generators-container">
-      <div className="header-row">
+      <div className="header-row no-print">
         <h1 className="main-title">{activeTab}</h1>
         <button className="phase-history-btn" onClick={showPhaseHistory}>
           🕒 Phase History
@@ -186,13 +238,15 @@ const Dashboard = ({ activeTab }) => {
               <div key={task.id} className="task-row">
                 <div className="task-label-group">
                   <span className={`status-dot ${getStatusColor(task)}`}></span>
-                  <span className="task-name">{task.name}</span>
-                  <span className={`days-badge ${getStatusColor(task)}`}>
-                    {getDaysRemaining(task)}
-                  </span>
+                  <div className="name-wrapper">
+                    <span className="task-name">{task.name}</span>
+                    <span className={`days-badge ${getStatusColor(task)}`}>
+                      {getDaysRemaining(task)}
+                    </span>
+                  </div>
                 </div>
                 
-                <div className="task-actions">
+                <div className="task-actions no-print">
                   <button className="history-link" onClick={() => showTaskHistory(task)}>
                     History
                   </button>
@@ -212,18 +266,22 @@ const Dashboard = ({ activeTab }) => {
       {/* --- HISTORY MODAL --- */}
       {historyData.isOpen && (
         <div className="modal-overlay">
-          <div className="modal-content history-modal">
+          <div className="modal-content history-modal printable-history">
             <div className="modal-header">
-              <h3>{historyData.title}</h3>
-              <button className="close-x" onClick={() => setHistoryData({ ...historyData, isOpen: false })}>✕</button>
+              <h2>{historyData.title}</h2>
+              <div className="modal-header-actions no-print">
+                <button className="print-history-btn" onClick={() => window.print()}>🖨️ Print Log</button>
+                <button className="close-x" onClick={() => setHistoryData({ ...historyData, isOpen: false })}>✕</button>
+              </div>
             </div>
             <div className="history-scroll-area">
               {historyData.logs.length > 0 ? (
-                historyData.logs.map((log, index) => (
-                  <div key={index} className="history-card">
+                historyData.logs.map((log) => (
+                  <div key={log.id} className="history-card">
                     <div className="history-card-header">
                       <span className="history-date">{log.timestamp?.toDate().toLocaleDateString()}</span>
                       {historyData.title.includes("Activity") && <span className="history-task-tag">{log.task_name}</span>}
+                      <button className="delete-log-btn no-print" onClick={() => deleteLog(log.id, log.task_id)}>🗑️</button>
                     </div>
                     <div className="history-card-body">
                       {log.run_time && <p className="history-runtime"><strong>Run Time:</strong> {log.run_time} mins</p>}
@@ -269,5 +327,6 @@ const Dashboard = ({ activeTab }) => {
 };
 
 export default Dashboard;
+
 
 
