@@ -282,6 +282,15 @@ input[type="date"]::-webkit-datetime-edit-fields-wrapper {
   transform: translateY(1px);
 }
 
+.phase-history-btn:focus, 
+.cancel-btn:focus, 
+.confirm-btn:focus, 
+.calendar-input:focus, 
+.notes-area:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 /* Ensure the header row gives it enough space */
 .header-row {
   display: flex;
