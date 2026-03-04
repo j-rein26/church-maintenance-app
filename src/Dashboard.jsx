@@ -29,14 +29,15 @@ const Dashboard = ({ activeTab }) => {
   // --- Report Launcher State ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [reportFilters, setReportFilters] = useState({
-    start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], // Default Jan 1st
+    start: new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0],
-    taskQuery: "Exit Sign" // Default for Fire Dept
+    taskQuery: "Exit Sign" 
   });
 
   // --- History/Display State ---
   const [historyData, setHistoryData] = useState({ title: "", logs: [], isOpen: false });
 
+  // --- Data Fetching ---
   useEffect(() => {
     setLoading(true);
     const fetchData = async () => {
@@ -72,14 +73,101 @@ const Dashboard = ({ activeTab }) => {
           });
         });
       } catch (error) {
-        console.error("Error:", error);
+        console.error("Error fetching data:", error);
         setLoading(false);
       }
     };
     fetchData();
   }, [activeTab]);
 
-  // --- Report Logic ---
+  // --- Status Helpers ---
+  const getStatusColor = (task) => {
+    if (!task.last_completed) return "gray";
+    const lastDate = task.last_completed.toDate ? task.last_completed.toDate() : new Date(task.last_completed);
+    const now = new Date();
+    const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
+    const freq = (task.recurrence_type || "monthly").toLowerCase();
+    
+    let daysAllowed = 31; 
+    let warnWindow = 24;
+
+    if (freq.includes("week")) { daysAllowed = 7; warnWindow = 5; }
+    else if (freq.includes("month")) { daysAllowed = 31; warnWindow = 24; }
+    else if (freq.includes("quarter")) { daysAllowed = 91; warnWindow = 81; }
+    else if (freq.includes("semi")) { daysAllowed = 182; warnWindow = 167; }
+    else if (freq.includes("annual") || freq.includes("year")) { daysAllowed = 365; warnWindow = 350; }
+
+    if (diffDays >= daysAllowed) return "red";
+    if (diffDays >= warnWindow) return "yellow";
+    return "green";
+  };
+
+  const getDaysRemaining = (task) => {
+    if (!task.last_completed) return "Pending";
+    const lastDate = task.last_completed.toDate ? task.last_completed.toDate() : new Date(task.last_completed);
+    const now = new Date();
+    const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
+    const freq = (task.recurrence_type || "monthly").toLowerCase();
+    
+    let totalAllowed = 31;
+    if (freq.includes("week")) totalAllowed = 7;
+    else if (freq.includes("month")) totalAllowed = 31;
+    else if (freq.includes("quarter")) totalAllowed = 91;
+    else if (freq.includes("semi")) totalAllowed = 182;
+    else if (freq.includes("annual") || freq.includes("year")) totalAllowed = 365;
+    
+    const remaining = totalAllowed - diffDays;
+    return remaining <= 0 ? "Overdue" : `${remaining}d left`;
+  };
+
+  // --- Logic Actions ---
+  const handleLogClick = (task) => {
+    setLogModalTask(task);
+    setLogDate(new Date().toISOString().split('T')[0]);
+    setRunTime(""); 
+    setNotes("");
+  };
+
+  const submitLog = async () => {
+    if (!logModalTask) return;
+    try {
+      const selectedDate = new Date(logDate + "T12:00:00");
+      await addDoc(collection(db, "entries"), {
+        task_id: logModalTask.id, 
+        task_name: logModalTask.name, 
+        timestamp: selectedDate, 
+        run_time: runTime || null, 
+        notes: notes || "Manual Entry", 
+        category: activeTab, 
+        logged_at: serverTimestamp(),
+      });
+
+      const currentLast = logModalTask.last_completed?.toDate 
+        ? logModalTask.last_completed.toDate() 
+        : new Date(logModalTask.last_completed || 0);
+
+      if (selectedDate >= currentLast) {
+        await updateDoc(doc(db, "tasks", logModalTask.id), { 
+          last_completed: selectedDate, 
+          status: "Completed" 
+        });
+      }
+      setLogModalTask(null);
+    } catch (e) { console.error(e); }
+  };
+
+  const showTaskHistory = async (task) => {
+    try {
+      const q = query(collection(db, "entries"), where("task_id", "==", task.id), orderBy("timestamp", "desc"), limit(20));
+      const snap = await getDocs(q);
+      setHistoryData({ 
+        title: `History: ${task.name}`, 
+        logs: snap.docs.map(doc => ({ id: doc.id, ...doc.data() })), 
+        isOpen: true 
+      });
+    } catch (e) { console.error(e); }
+  };
+
   const runFilteredReport = async () => {
     try {
       const startTimestamp = new Date(reportFilters.start + "T00:00:00");
@@ -96,7 +184,6 @@ const Dashboard = ({ activeTab }) => {
       let logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
       if (reportFilters.taskQuery.trim() !== "") {
-        // Use .includes() for better matching (Exit Sign vs Exit Signs)
         logs = logs.filter(log => 
           log.task_name.toLowerCase().includes(reportFilters.taskQuery.toLowerCase())
         );
@@ -108,48 +195,6 @@ const Dashboard = ({ activeTab }) => {
         logs: logs,
         isOpen: true
       });
-    } catch (e) { console.error(e); }
-  };
-
-  // --- Helpers ---
-  const getStatusColor = (task) => {
-    if (!task.last_completed) return "gray";
-    const lastDate = task.last_completed.toDate ? task.last_completed.toDate() : new Date(task.last_completed);
-    const now = new Date();
-    const diffDays = (now - lastDate) / (1000 * 60 * 60 * 24);
-    const freq = (task.recurrence_type || "monthly").toLowerCase();
-    let daysAllowed = 31; let warnWindow = 24;
-    if (freq.includes("week")) { daysAllowed = 7; warnWindow = 5; }
-    else if (freq.includes("month")) { daysAllowed = 31; warnWindow = 24; }
-    else if (freq.includes("quarter")) { daysAllowed = 91; warnWindow = 81; }
-    else if (freq.includes("semi")) { daysAllowed = 182; warnWindow = 167; }
-    else if (freq.includes("annual") || freq.includes("year")) { daysAllowed = 365; warnWindow = 350; }
-    if (diffDays >= daysAllowed) return "red";
-    if (diffDays >= warnWindow) return "yellow";
-    return "green";
-  };
-
-  const getDaysRemaining = (task) => {
-    if (!task.last_completed) return "Pending";
-    const lastDate = task.last_completed.toDate ? task.last_completed.toDate() : new Date(task.last_completed);
-    const now = new Date();
-    const diffDays = Math.floor((now - lastDate) / (1000 * 60 * 60 * 24));
-    const freq = (task.recurrence_type || "monthly").toLowerCase();
-    let totalAllowed = 31;
-    if (freq.includes("week")) totalAllowed = 7;
-    else if (freq.includes("month")) totalAllowed = 31;
-    else if (freq.includes("quarter")) totalAllowed = 91;
-    else if (freq.includes("semi")) totalAllowed = 182;
-    else if (freq.includes("annual") || freq.includes("year")) totalAllowed = 365;
-    const remaining = totalAllowed - diffDays;
-    return remaining <= 0 ? "Overdue" : `${remaining}d left`;
-  };
-
-  const showTaskHistory = async (task) => {
-    try {
-      const q = query(collection(db, "entries"), where("task_id", "==", task.id), orderBy("timestamp", "desc"), limit(20));
-      const snap = await getDocs(q);
-      setHistoryData({ title: `History: ${task.name}`, logs: snap.docs.map(doc => ({ id: doc.id, ...doc.data() })), isOpen: true });
     } catch (e) { console.error(e); }
   };
 
@@ -169,35 +214,12 @@ const Dashboard = ({ activeTab }) => {
     } catch (e) { console.error(e); }
   };
 
-  const handleLogClick = (task) => {
-    setLogModalTask(task);
-    setLogDate(new Date().toISOString().split('T')[0]);
-    setRunTime(""); setNotes("");
-  };
-
-  const submitLog = async () => {
-    if (!logModalTask) return;
-    try {
-      const selectedDate = new Date(logDate + "T12:00:00");
-      await addDoc(collection(db, "entries"), {
-        task_id: logModalTask.id, task_name: logModalTask.name, timestamp: selectedDate, 
-        run_time: runTime || null, notes: notes || "Manual Entry", category: activeTab, logged_at: serverTimestamp(),
-      });
-      const currentLast = logModalTask.last_completed?.toDate ? logModalTask.last_completed.toDate() : new Date(logModalTask.last_completed || 0);
-      if (selectedDate >= currentLast) {
-        await updateDoc(doc(db, "tasks", logModalTask.id), { last_completed: selectedDate, status: "Completed" });
-      }
-      setLogModalTask(null);
-    } catch (e) { console.error(e); }
-  };
-
   if (loading) return <div className="loading">Loading...</div>;
 
   return (
     <div className="generators-container">
       <div className="header-row no-print">
         <h1 className="main-title">{activeTab}</h1>
-        {/* NEW UNIFIED BUTTON */}
         <button 
           type="button" 
           className="phase-history-btn" 
@@ -209,7 +231,9 @@ const Dashboard = ({ activeTab }) => {
 
       {sections.map((category) => (
         <div key={category.id} className="generator-card">
-          <div className="generator-section-header">{category.name}</div>
+          <div className="generator-section-header">
+            {category.name}
+          </div>
           <div className="task-list">
             {category.tasks.map((task) => (
               <div key={task.id} className="task-row">
@@ -217,12 +241,22 @@ const Dashboard = ({ activeTab }) => {
                   <span className={`status-dot ${getStatusColor(task)}`}></span>
                   <div className="name-wrapper">
                     <span className="task-name">{task.name}</span>
-                    <span className={`days-badge ${getStatusColor(task)}`}>{getDaysRemaining(task)}</span>
+                    <span className={`days-badge ${getStatusColor(task)}`}>
+                      {getDaysRemaining(task)}
+                    </span>
                   </div>
                 </div>
                 <div className="task-actions no-print">
-                  <button type="button" className="history-link" onClick={() => showTaskHistory(task)}>History</button>
-                  <button type="button" className={`log-btn ${getStatusColor(task) === "yellow" ? "yellow-warning" : ""}`} onClick={() => handleLogClick(task)}>Log</button>
+                  <button type="button" className="history-link" onClick={() => showTaskHistory(task)}>
+                    History
+                  </button>
+                  <button 
+                    type="button" 
+                    className={`log-btn ${getStatusColor(task) === "yellow" ? "yellow-warning" : ""}`} 
+                    onClick={() => handleLogClick(task)}
+                  >
+                    Log
+                  </button>
                 </div>
               </div>
             ))}
@@ -294,16 +328,6 @@ const Dashboard = ({ activeTab }) => {
               <label htmlFor="log-date-field">Date Performed</label>
               <input 
                 id="log-date-field" type="date" className="calendar-input" value={logDate} onChange={(e) => setLogDate(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); document.getElementById('modal-end').focus(); }}}
-                onKeyUp={(e) => {
-                  if (e.key === 'Tab' && !e.shiftKey) {
-                    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-                    if (isChrome) {
-                      const next = document.getElementById('runtime-input') || document.getElementById('notes-input');
-                      if (next) next.focus();
-                    }
-                  }
-                }}
               />
             </div>
             {activeTab === "Generators" && (
@@ -316,22 +340,11 @@ const Dashboard = ({ activeTab }) => {
               <label htmlFor="notes-input">Notes</label>
               <textarea 
                 id="notes-input" className="notes-area" value={notes} onChange={(e) => setNotes(e.target.value)} rows="3"
-                onKeyDown={(e) => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.getElementById('modal-cancel').focus(); }}}
               />
             </div>
             <div className="modal-actions">
-              <button id="modal-cancel" className="cancel-btn" type="button" onClick={() => setLogModalTask(null)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.getElementById('modal-end').focus(); }
-                  if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); document.getElementById('notes-input').focus(); }
-                }}
-              >Cancel</button>
-              <button id="modal-end" className="confirm-btn" type="button" onClick={submitLog}
-                onKeyDown={(e) => {
-                  if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); document.getElementById('log-date-field').focus(); }
-                  if (e.key === 'Tab' && e.shiftKey) { e.preventDefault(); document.getElementById('modal-cancel').focus(); }
-                }}
-              >Save Entry</button>
+              <button className="cancel-btn" type="button" onClick={() => setLogModalTask(null)}>Cancel</button>
+              <button className="confirm-btn" type="button" onClick={submitLog}>Save Entry</button>
             </div>
           </div>
         </div>
@@ -341,7 +354,6 @@ const Dashboard = ({ activeTab }) => {
 };
 
 export default Dashboard;
-
 
 
 
