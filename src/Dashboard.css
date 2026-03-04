@@ -7,9 +7,19 @@
 
 .header-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+  flex-direction: column;    /* Stacks title and button vertically */
+  align-items: flex-start;   /* Aligns both to the left */
+  gap: 15px;                 /* Creates the space between Title and Button */
+  margin-bottom: 2.0rem;     /* Space between this header and the first card */
+  padding: 0 5px;
+}
+
+.main-title {
+  color: #ffffff;
+  font-size: 2.5rem;
+  font-weight: 800;
+  /* This adds space specifically below the "Phase" text */
+  margin-bottom: 20px; 
 }
 
 /* --- CARDS & ROWS --- */
@@ -85,7 +95,7 @@
   padding: 20px;
 }
 
-/* --- LOG MODAL --- */
+/* --- LOG & REPORT MODALS --- */
 .log-modal {
   background: #1e293b;
   border: 1px solid #334155;
@@ -97,6 +107,9 @@
   text-align: left;
   box-shadow: 0 10px 25px rgba(0,0,0,0.5);
 }
+
+.modal-title { margin-top: 0; color: white; }
+.modal-subtitle { color: #94a3b8; margin-bottom: 1.5rem; }
 
 .log-input-group {
   margin-bottom: 1.25rem;
@@ -110,7 +123,6 @@
   color: #cbd5e1;
 }
 
-/* INPUTS (Chrome Typing Fix) */
 .calendar-input, .notes-area {
   background: #0f172a;
   color: white;
@@ -128,7 +140,7 @@
   opacity: 0.7;
 }
 
-/* --- MODAL BUTTONS (Safari & Layout Fix) --- */
+/* --- MODAL BUTTONS --- */
 .modal-actions {
   display: flex;
   justify-content: space-between;
@@ -138,10 +150,8 @@
 }
 
 .cancel-btn, .confirm-btn {
-  /* Safari Override */
   -webkit-appearance: none;
   appearance: none;
-  /* Layout */
   flex: 1; 
   padding: 12px 20px;
   border-radius: 8px;
@@ -150,7 +160,7 @@
   cursor: pointer;
   border: none;
   text-align: center;
-  transition: opacity 0.2s;
+  transition: background-color 0.2s;
 }
 
 .cancel-btn {
@@ -159,8 +169,38 @@
 }
 
 .confirm-btn {
-  background-color: #2563eb !important; /* Force Safari Blue */
+  background-color: #2563eb !important;
   color: white !important;
+}
+
+.confirm-btn:hover {
+  background-color: #1d4ed8 !important;
+}
+
+/* --- MAIN BUTTONS --- */
+.phase-history-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #334155;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.log-btn {
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .log-btn.yellow-warning {
@@ -193,9 +233,27 @@
   padding: 15px;
   margin-bottom: 12px;
   border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+}
+
+/* --- ACCESSIBILITY & UTILITY --- */
+.no-print { display: block; }
+
+.history-link {
+  background: none; border: none;
+  color: #64748b; text-decoration: underline;
+  cursor: pointer; font-size: 0.85rem;
+}
+
+.delete-log-btn {
+  background: none; border: none; cursor: pointer;
+}
+
+/* Chrome Date Logic */
+input[type="date"]::-webkit-datetime-edit-fields-wrapper { display: flex; }
+
+.phase-history-btn:focus, .cancel-btn:focus, .confirm-btn:focus, .calendar-input:focus, .notes-area:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 
 /* --- PRINTING --- */
@@ -209,94 +267,14 @@
     color: black !important;
   }
   .no-print { display: none !important; }
+  
+  .printable-history::before {
+    content: "FACILITY MAINTENANCE COMPLIANCE REPORT";
+    display: block; text-align: center; font-size: 24px; font-weight: bold; margin-bottom: 10px;
+  }
+  
+  .printable-history::after {
+    content: "Inspector Signature: __________________________ Date: __________";
+    display: block; margin-top: 50px; font-weight: bold;
+  }
 }
-
-/* Ensure the action container is visible and aligned */
-.task-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
-  min-width: 150px; /* Gives the buttons a guaranteed area */
-}
-
-/* Ensure the history link is actually visible */
-.history-link {
-  background: none;
-  border: none;
-  color: #64748b; /* Medium slate gray */
-  text-decoration: underline;
-  cursor: pointer;
-  font-size: 0.85rem;
-  padding: 4px;
-}
-
-.history-link:hover {
-  color: #3b82f6; /* Blue on hover */
-}
-
-/* Redefine the log button just in case it was overwritten */
-.log-btn {
-  background-color: #2563eb;
-  color: white;
-  border: none;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* Chrome Date Field Logic */
-input[type="date"]::-webkit-datetime-edit-fields-wrapper {
-  display: flex;
-}
-.cancel-btn:focus, .confirm-btn:focus, .calendar-input:focus, .notes-area:focus {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Make the Phase History button stand out */
-.phase-history-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #334155; /* Darker slate for contrast */
-  color: white;
-  border: none;
-  padding: 12px 20px; /* Increased padding */
-  border-radius: 8px;
-  font-size: 1rem; /* Bigger text */
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-  white-space: nowrap;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Subtle depth */
-}
-
-.phase-history-btn:hover {
-  background-color: #475569;
-}
-
-.phase-history-btn:active {
-  transform: translateY(1px);
-}
-
-.phase-history-btn:focus, 
-.cancel-btn:focus, 
-.confirm-btn:focus, 
-.calendar-input:focus, 
-.notes-area:focus {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Ensure the header row gives it enough space */
-.header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-  padding: 0 5px;
-}
-

@@ -3,7 +3,6 @@ import { auth } from "./firebase";
 import { onAuthStateChanged, signOut } from "firebase/auth";
 import Dashboard from "./Dashboard";
 import TaskManager from "./TaskManager";
-import FireReport from "./FireReport"; // 1. New Import
 import Login from "./Login";
 import seedDatabase from "./seedData";
 import "./App.css"; 
@@ -13,7 +12,6 @@ function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("Generators");
   const [isManageMode, setIsManageMode] = useState(false);
-  const [showReport, setShowReport] = useState(false); // 2. New State
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -37,54 +35,47 @@ function App() {
   const changeTab = (tab) => {
     setActiveTab(tab);
     setIsManageMode(false);
-    setShowReport(false); // Ensure report closes when switching tabs
   };
 
   return (
     <div className="app-layout">
       {/* SIDEBAR */}
       <nav className="sidebar">
-        <div className="sidebar-header">
-          <h2 className="brand-name">Maintenance</h2>
-          <button 
-            className={`manage-btn ${isManageMode ? 'active-manage' : ''}`}
-            onClick={() => {
-              setIsManageMode(!isManageMode);
-              setShowReport(false);
-            }}
-          >
-            {isManageMode ? "⬅ Back to View" : "⚙️ Manage Tasks"}
-          </button>
-        </div>
-
-        <div className="sidebar-menu">
-          <button 
-            className={`nav-item ${activeTab === "Generators" ? "active" : ""}`}
-            onClick={() => changeTab("Generators")}
-          >
-            <span className="icon">⚡</span> Generators
-          </button>
-
-          <p className="menu-label">PHASES</p>
-          {phases.map((phase) => (
-            <button
-              key={phase}
-              className={`nav-item ${activeTab === phase ? "active" : ""}`}
-              onClick={() => changeTab(phase)}
+        <div className="sidebar-top">
+          <div className="sidebar-header">
+            <h2 className="brand-name">Maintenance</h2>
+            <button 
+              className={`manage-btn ${isManageMode ? 'active-manage' : ''}`}
+              onClick={() => setIsManageMode(!isManageMode)}
             >
-              {phase}
+              {isManageMode ? "⬅ Back to View" : "⚙️ Manage Tasks"}
             </button>
-          ))}
-        </div>
+          </div>
 
-        <div className="sidebar-footer">
-          {/* 3. Updated Report Button */}
-          <button className="footer-btn report" onClick={() => setShowReport(true)}>
-            📋 Fire Dept Report
-          </button>
+          <div className="sidebar-menu">
+            <button 
+              className={`nav-item ${activeTab === "Generators" ? "active" : ""}`}
+              onClick={() => changeTab("Generators")}
+            >
+              <span className="icon">⚡</span> Generators
+            </button>
+
+            <p className="menu-label">PHASES</p>
+            {phases.map((phase) => (
+              <button
+                key={phase}
+                className={`nav-item ${activeTab === phase ? "active" : ""}`}
+                onClick={() => changeTab(phase)}
+              >
+                {phase}
+              </button>
+            ))}
+          </div>
+        </div>
           
-        <button className="footer-btn backup" onClick={exportToCSV}>
-           💾 Export Backup
+        <div className="sidebar-footer">
+          <button className="footer-btn backup" onClick={exportToCSV}>
+             💾 Export Backup
           </button>
           
           <div className="auth-row">
@@ -96,9 +87,6 @@ function App() {
 
       {/* MAIN CONTENT AREA */}
       <main className="content-area">
-        {/* 4. Logic to show Report Overlay */}
-        {showReport && <FireReport onClose={() => setShowReport(false)} />}
-
         {isManageMode ? (
           <TaskManager activeTab={activeTab} />
         ) : (
